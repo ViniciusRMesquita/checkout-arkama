@@ -3,82 +3,64 @@ import fetch from "node-fetch";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
-// Lista de endpoints da Arkama (ordem de prioridade)
-const ENDPOINTS = [
-  "https://app.arkama.com.br/api/v1",       // PROD
-  "https://beta.arkama.com.br/api/v1",      // BETA
-  "https://sandbox.arkama.com.br/api/v1"    // SANDBOX
-];
+// Escolhe automaticamente ambiente e URL base
+const ARKAMA_BASE_URL =
+  process.env.ARKAMA_BASE_URL || "https://sandbox.arkama.com.br/api/v1";
+const ARKAMA_API_KEY = process.env.ARKAMA_API_KEY;
 
-// Função para testar qual ambiente está online
-async function getAvailableEndpoint() {
-  for (const url of ENDPOINTS) {
-    try {
-      const res = await fetch(url, { method: "GET", timeout: 4000 });
-      if (res.ok) {
-        console.log(`✅ Arkama disponível em: ${url}`);
-        return url;
-      } else {
-        console.log(`⚠️ Falha em ${url}: ${res.status}`);
-      }
-    } catch {
-      console.log(`❌ Não foi possível conectar a ${url}`);
-    }
+// Função utilitária para criar pagamento
+async function criarPagamento({ nome, email, valor, metodo }) {
+  const endpoint = `${ARKAMA_BASE_URL}/payments`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${ARKAMA_API_KEY}`,
+    },
+    body: JSON.stringify({
+      name: nome,
+      email,
+      amount: parseFloat(valor),
+      method: metodo,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Erro Arkama: ${response.status} - ${response.statusText} - ${errorText}`
+    );
   }
-  throw new Error("Nenhum servidor Arkama está disponível no momento.");
+
+  return await response.json();
 }
 
 // Endpoint de pagamento
 app.post("/api/pagar", async (req, res) => {
-  const { nome, email, valor, forma } = req.body;
-
   try {
-    const ARKAMA_API_KEY = process.env.ARKAMA_API_KEY;
-    if (!ARKAMA_API_KEY) {
-      return res.status(500).json({ erro: "Chave API Arkama ausente" });
-    }
+    const { nome, email, valor, metodo } = req.body;
+    if (!nome || !email || !valor || !metodo)
+      return res.status(400).json({ erro: "Campos obrigatórios faltando." });
 
-    const baseURL = await getAvailableEndpoint();
-
-    const response = await fetch(`${baseURL}/payments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${ARKAMA_API_KEY}`,
-        "User-Agent": "Checkout-Arkama"
-      },
-      body: JSON.stringify({
-        name: nome,
-        email: email,
-        amount: parseFloat(valor),
-        payment_method: forma.toLowerCase()
-      })
-    });
-
-    const data = await response.text();
-
-    try {
-      const json = JSON.parse(data);
-      if (response.ok) {
-        return res.json(json);
-      } else {
-        return res.status(response.status).json({ erro: json });
-      }
-    } catch {
-      console.error("❌ A API Arkama retornou HTML ou formato inválido.");
-      return res.status(502).json({ erro: "A API Arkama retornou HTML ou formato inválido." });
-    }
-
+    const pagamento = await criarPagamento({ nome, email, valor, metodo });
+    res.json({ sucesso: true, pagamento });
   } catch (erro) {
-    console.error("💥 Erro ao criar pagamento:", erro.message);
-    res.status(500).json({ erro: "Erro ao criar pagamento." });
+    console.error("Erro ao criar pagamento:", erro.message);
+    res
+      .status(500)
+      .json({ erro: "Falha na criação de pagamento", detalhe: erro.message });
   }
 });
 
-// Inicializa o servidor (modo local)
+// Teste rápido
+app.get("/api/teste", (_, res) =>
+  res.json({ status: "ok", base: ARKAMA_BASE_URL })
+);
+
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
