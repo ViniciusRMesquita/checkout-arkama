@@ -1,83 +1,89 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Checkout Arkama</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="container">
-    <h1>💳 Finalizar Pagamento</h1>
-
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finalizar Pedido</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f8f9fa;
+        text-align: center;
+        margin-top: 50px;
+      }
+      form {
+        display: inline-block;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      select {
+        margin: 5px;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .mensagem {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Finalizar Pedido</h1>
     <form id="checkoutForm">
-      <label for="nome">Nome completo</label>
-      <input type="text" id="nome" placeholder="Ex: Vinícius Mesquita" required />
-
-      <label for="email">E-mail</label>
-      <input type="email" id="email" placeholder="seuemail@exemplo.com" required />
-
-      <label for="valor">Valor (R$)</label>
-      <input type="number" id="valor" step="0.01" placeholder="Ex: 29.90" required />
-
-      <label for="forma">Forma de pagamento</label>
-      <select id="forma" required>
-        <option value="pix">Pix</option>
-        <option value="boleto">Boleto</option>
-        <option value="credito">Cartão de Crédito</option>
+      <input type="text" name="nome" placeholder="Nome completo" required />
+      <input type="email" name="email" placeholder="Email" required />
+      <input type="number" name="valor" placeholder="Valor (R$)" required />
+      <select name="metodo" required>
+        <option value="Pix">Pix</option>
+        <option value="Cartao">Cartão</option>
       </select>
-
-      <button type="submit" id="btnPagar">Pagar Agora</button>
+      <button type="submit">Pagar Agora</button>
     </form>
 
-    <p id="status" class="status"></p>
-  </div>
+    <div class="mensagem" id="mensagem"></div>
 
-  <script>
-    const form = document.getElementById("checkoutForm");
-    const statusEl = document.getElementById("status");
-    const btn = document.getElementById("btnPagar");
+    <script>
+      document
+        .getElementById("checkoutForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const dados = Object.fromEntries(new FormData(form));
+          const msg = document.getElementById("mensagem");
+          msg.textContent = "Processando pagamento...";
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      statusEl.textContent = "🔄 Conectando à Arkama...";
-      statusEl.style.color = "#00b2ff";
-      btn.disabled = true;
+          try {
+            const resposta = await fetch("/api/pagar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(dados),
+            });
+            const json = await resposta.json();
 
-      const data = {
-        nome: document.getElementById("nome").value,
-        email: document.getElementById("email").value,
-        valor: document.getElementById("valor").value,
-        forma: document.getElementById("forma").value,
-      };
-
-      try {
-        const res = await fetch("/api/pagar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+            if (json.sucesso) {
+              msg.innerHTML = `<b>✅ Pagamento criado com sucesso!</b><br>ID: ${json.pagamento.id}`;
+            } else {
+              msg.innerHTML = `<b style="color:red;">❌ Falha:</b> ${
+                json.erro || json.detalhe
+              }`;
+            }
+          } catch (erro) {
+            msg.innerHTML = `<b style="color:red;">❌ Erro inesperado:</b> ${erro.message}`;
+          }
         });
-
-        const result = await res.json();
-
-        if (res.ok) {
-          statusEl.textContent = "✅ Pagamento criado com sucesso!";
-          statusEl.style.color = "#00ff85";
-          console.log("Sucesso Arkama:", result);
-        } else {
-          statusEl.textContent =
-            "⚠️ " + (result.erro || "Erro ao criar pagamento. Tentando servidor alternativo...");
-          statusEl.style.color = "#ffcc00";
-          console.warn("Erro Arkama:", result);
-        }
-      } catch (err) {
-        statusEl.textContent = "❌ Falha ao conectar à Arkama. Verifique a conexão.";
-        statusEl.style.color = "#ff4444";
-        console.error(err);
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  </script>
-</body>
+    </script>
+  </body>
 </html>
