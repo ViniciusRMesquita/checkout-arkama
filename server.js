@@ -3,64 +3,52 @@ import fetch from "node-fetch";
 import cors from "cors";
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-
-// Escolhe automaticamente ambiente e URL base
-const ARKAMA_BASE_URL =
-  process.env.ARKAMA_BASE_URL || "https://sandbox.arkama.com.br/api/v1";
-const ARKAMA_API_KEY = process.env.ARKAMA_API_KEY;
-
-// Função utilitária para criar pagamento
-async function criarPagamento({ nome, email, valor, metodo }) {
-  const endpoint = `${ARKAMA_BASE_URL}/payments`;
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${ARKAMA_API_KEY}`,
-    },
-    body: JSON.stringify({
-      name: nome,
-      email,
-      amount: parseFloat(valor),
-      method: metodo,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Erro Arkama: ${response.status} - ${response.statusText} - ${errorText}`
-    );
-  }
-
-  return await response.json();
-}
-
-// Endpoint de pagamento
+// rota principal para criar compra
 app.post("/api/pagar", async (req, res) => {
-  try {
-    const { nome, email, valor, metodo } = req.body;
-    if (!nome || !email || !valor || !metodo)
-      return res.status(400).json({ erro: "Campos obrigatórios faltando." });
+  const { nome, email, valor, formaPagamento } = req.body;
 
-    const pagamento = await criarPagamento({ nome, email, valor, metodo });
-    res.json({ sucesso: true, pagamento });
-  } catch (erro) {
-    console.error("Erro ao criar pagamento:", erro.message);
-    res
-      .status(500)
-      .json({ erro: "Falha na criação de pagamento", detalhe: erro.message });
+  try {
+    const response = await fetch(`${process.env.ARKAMA_BASE_URL}/compra`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "checkout-arkama",
+        "Authorization": `Bearer ${process.env.ARKAMA_API_KEY}`
+      },
+      body: JSON.stringify({
+        value: parseFloat(valor),
+        paymentMethod: formaPagamento.toLowerCase(), // "pix" ou "credit_card"
+        customer: {
+          name: nome,
+          email: email
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Erro Arkama:", data);
+      return res.status(response.status).json({
+        erro: "Falha ao criar pagamento",
+        detalhes: data
+      });
+    }
+
+    res.json({
+      sucesso: true,
+      dados: data
+    });
+  } catch (error) {
+    console.error("Erro geral:", error);
+    res.status(500).json({
+      erro: "Erro ao criar pagamento",
+      detalhes: error.message
+    });
   }
 });
 
-// Teste rápido
-app.get("/api/teste", (_, res) =>
-  res.json({ status: "ok", base: ARKAMA_BASE_URL })
-);
-
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(3000, () => console.log("Servidor rodando na porta 3000"));
