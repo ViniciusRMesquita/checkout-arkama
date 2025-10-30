@@ -6,6 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// rota principal do checkout
 app.post("/api/pagar", async (req, res) => {
   const { nome, email, valor, metodo } = req.body;
 
@@ -14,21 +15,29 @@ app.post("/api/pagar", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer SUA_API_KEY_AQUI"
+        "Authorization": `Bearer ${process.env.ARKAMA_API_KEY}`, // ← lê a variável de ambiente
       },
       body: JSON.stringify({
         nome,
         email,
         valor,
-        metodo
+        metodo,
       }),
     });
 
-    const json = await resposta.json();
-    res.json(json);
+    const resultado = await resposta.json();
+
+    // log para debug (você pode ver isso em Deploy → Logs)
+    console.log("Resposta Arkama:", resultado);
+
+    res.json(resultado);
   } catch (erro) {
-    res.json({ status: "erro", mensagem: "Erro ao criar pagamento." });
+    console.error("Erro ao criar pagamento:", erro);
+    res.json({
+      status: "erro",
+      mensagem: "Falha ao criar pagamento. Verifique sua API key ou endpoint.",
+    });
   }
 });
 
-app.listen(3000, () => console.log("✅ Servidor rodando na porta 3000"));
+app.listen(3000, () => console.log("Servidor rodando"));
