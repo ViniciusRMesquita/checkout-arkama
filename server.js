@@ -10,14 +10,13 @@ app.post("/api/pagar", async (req, res) => {
   const { nome, email, valor, formaPagamento } = req.body;
 
   try {
-    const response = await fetch(`${process.env.ARKAMA_BASE_URL}criar-compra`, {
+    const response = await fetch(`${process.env.ARKAMA_BASE_URL}/compra/criar`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.ARKAMA_API_KEY}`
       },
       body: JSON.stringify({
-        token: process.env.ARKAMA_API_KEY,
         nome,
         email,
         valor,
@@ -25,14 +24,7 @@ app.post("/api/pagar", async (req, res) => {
       })
     });
 
-    // Tenta converter para JSON; se falhar, captura o HTML retornado
-    const text = await response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error(`A API Arkama retornou HTML ou formato inválido: ${text.slice(0, 200)}...`);
-    }
+    const data = await response.json();
 
     if (!response.ok) {
       console.error("Erro Arkama:", data);
@@ -42,7 +34,10 @@ app.post("/api/pagar", async (req, res) => {
       });
     }
 
-    res.json({ sucesso: true, dados: data });
+    res.json({
+      sucesso: true,
+      dados: data
+    });
   } catch (error) {
     console.error("Erro geral:", error);
     res.status(500).json({
