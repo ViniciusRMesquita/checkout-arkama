@@ -10,7 +10,7 @@ app.post("/api/pagar", async (req, res) => {
   const { nome, email, valor, formaPagamento } = req.body;
 
   try {
-    const response = await fetch(`${process.env.ARKAMA_BASE_URL}/compra/criar`, {
+  const response = await fetch(`${process.env.ARKAMA_BASE_URL}/purchases`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,3 +48,4 @@ app.post("/api/pagar", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Servidor rodando na porta 3000"));
+
