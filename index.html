@@ -23,4 +23,54 @@
       <label>Forma de pagamento</label>
       <select id="metodo" required>
         <option value="pix">Pix</option>
-        <option
+        <option value="boleto">Boleto</option>
+        <option value="credito">Cartão de Crédito</option>
+      </select>
+
+      <button type="submit">Pagar Agora</button>
+    </form>
+
+    <p id="status"></p>
+  </div>
+
+  <script>
+    const form = document.getElementById("checkoutForm");
+    const status = document.getElementById("status");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      status.textContent = "Processando pagamento...";
+
+      const data = {
+        nome: form.nome.value,
+        email: form.email.value,
+        valor: form.valor.value,
+        metodo: form.metodo.value,
+      };
+
+      try {
+        const res = await fetch("/api/pagar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          status.style.color = "green";
+          status.textContent = "✅ Pagamento criado com sucesso!";
+          console.log(result);
+        } else {
+          status.style.color = "red";
+          status.textContent = "❌ " + (result.mensagem || "Erro ao criar pagamento.");
+          console.error(result);
+        }
+      } catch (err) {
+        status.style.color = "red";
+        status.textContent = "Falha ao criar pagamento. Verifique logs na Vercel.";
+      }
+    });
+  </script>
+</body>
+</html>
