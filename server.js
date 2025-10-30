@@ -5,87 +5,86 @@ import cors from "cors";
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
-// Ambiente (mude se quiser testar no sandbox)
-const ARKAMA_BASE_URL = process.env.ARKAMA_BASE_URL || "https://app.arkama.com.br/api/v1";
+console.log("✅ Ambiente Arkama iniciado...");
+console.log("🔗 Base URL:", process.env.ARKAMA_BASE_URL);
+console.log("🔑 API Key configurada:", process.env.ARKAMA_API_KEY ? "✔️ OK" : "❌ Faltando");
 
+// Rota principal de pagamento
 app.post("/api/pagar", async (req, res) => {
-  const { nome, email, valor, metodo } = req.body;
-
   try {
-    console.log("📩 Recebido do front:", { nome, email, valor, metodo });
+    const { nome, email, valor, formaPagamento } = req.body;
 
-    const url = `${ARKAMA_BASE_URL}/payment`;
+    // Validação simples
+    if (!nome || !email || !valor || !formaPagamento) {
+      return res.status(400).json({ error: "Campos obrigatórios ausentes." });
+    }
 
-    const resposta = await fetch(url, {
+    console.log("📦 Enviando pagamento para Arkama:", { nome, email, valor, formaPagamento });
+
+    const response = await fetch(`${process.env.ARKAMA_BASE_URL}/payments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Checkout-Arkama",
         "Authorization": `Bearer ${process.env.ARKAMA_API_KEY}`,
+        "User-Agent": "checkout-arkama"
       },
       body: JSON.stringify({
-        amount: Number(valor),
-        payment_method: metodo.toLowerCase(),
+        amount: valor,
+        payment_method: formaPagamento,
         customer: {
           name: nome,
-          email: email,
-        },
-      }),
+          email: email
+        }
+      })
     });
 
-    const texto = await resposta.text();
-    console.log("🔵 Resposta bruta Arkama:", texto.slice(0, 400));
+    const text = await response.text();
+    console.log("🔍 Resposta da Arkama:", text);
 
-    let json;
     try {
-      json = JSON.parse(texto);
-    } catch {
-      console.error("❌ Retorno não é JSON válido!");
+      const data = JSON.parse(text);
+      if (!response.ok) {
+        throw new Error(data.message || "Erro retornado pela API Arkama");
+      }
+      return res.json({ success: true, data });
+    } catch (jsonError) {
+      // Quando a API retorna HTML (erro comum)
+      console.error("❌ Resposta inválida da Arkama (não JSON):", text);
       return res.status(500).json({
-        status: "erro",
-        mensagem: "A API Arkama retornou HTML ou formato inválido.",
-        detalhe: texto.slice(0, 200),
+        error: "A API Arkama retornou HTML ou formato inválido.",
       });
     }
 
-    if (!resposta.ok) {
-      console.error("⚠️ Erro da Arkama:", json);
-      return res.status(resposta.status).json({
-        status: "erro",
-        mensagem: json.message || "Erro ao criar pagamento na Arkama.",
-        detalhe: json,
-      });
-    }
-
-    console.log("✅ Pagamento criado com sucesso!");
-    res.json({
-      status: "sucesso",
-      dados: json,
-    });
-  } catch (erro) {
-    console.error("🔴 Erro geral no backend:", erro);
-    res.status(500).json({
-      status: "erro",
-      mensagem: "Falha ao conectar à Arkama. Verifique os logs na Vercel.",
-    });
-  }
-});
-
-// Rota de teste opcional
-app.get("/api/teste", async (req, res) => {
-  try {
-    const resp = await fetch(`${ARKAMA_BASE_URL}/`, {
-      headers: {
-        Authorization: `Bearer ${process.env.ARKAMA_API_KEY}`,
-        "User-Agent": "Checkout-Arkama",
-      },
-    });
-    const texto = await resp.text();
-    res.send(texto);
   } catch (err) {
-    res.send(err.message);
+    console.error("🚨 Erro ao criar pagamento:", err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(3000, () => console.log("🚀 Servidor local rodando na porta 3000"));
+// Rota teste (para debug rápido)
+app.get("/api/teste", (req, res) => {
+  res.send(`
+    <h1>Finalizar Pedido</h1>
+    <form method="POST" action="/api/pagar" style="font-family:sans-serif;">
+      <label>Nome completo</label>
+      <input name="nome" value="Teste Checkout"><br>
+      <label>Email</label>
+      <input name="email" value="teste@exemplo.com"><br>
+      <label>Valor (R$)</label>
+      <input name="valor" value="5.00"><br>
+      <label>Forma de pagamento</label>
+      <select name="formaPagamento">
+        <option value="Pix">Pix</option>
+      </select>
+      <button type="submit">Pagar Agora</button>
+    </form>
+  `);
+});
+
+// Inicialização local
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+});
