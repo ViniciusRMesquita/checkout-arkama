@@ -1,7 +1,7 @@
 {
   "name": "checkout-arkama",
   "version": "1.0.0",
-  "description": "Checkout integrado com Arkama API",
+  "description": "Checkout integrado com API Arkama",
   "main": "server.js",
   "type": "module",
   "dependencies": {
