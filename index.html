@@ -3,49 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Finalizar Pedido</title>
+  <title>Checkout Arkama</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
-    <h1>Finalizar Pedido</h1>
+    <h1>💳 Finalizar Pagamento</h1>
 
     <form id="checkoutForm">
-      <label>Nome completo</label>
-      <input type="text" id="nome" required />
+      <label for="nome">Nome completo</label>
+      <input type="text" id="nome" placeholder="Ex: Vinícius Mesquita" required />
 
-      <label>Email</label>
-      <input type="email" id="email" required />
+      <label for="email">E-mail</label>
+      <input type="email" id="email" placeholder="seuemail@exemplo.com" required />
 
-      <label>Valor (R$)</label>
-      <input type="number" id="valor" min="1" step="0.01" required />
+      <label for="valor">Valor (R$)</label>
+      <input type="number" id="valor" step="0.01" placeholder="Ex: 29.90" required />
 
-      <label>Forma de pagamento</label>
-      <select id="metodo" required>
+      <label for="forma">Forma de pagamento</label>
+      <select id="forma" required>
         <option value="pix">Pix</option>
         <option value="boleto">Boleto</option>
         <option value="credito">Cartão de Crédito</option>
       </select>
 
-      <button type="submit">Pagar Agora</button>
+      <button type="submit" id="btnPagar">Pagar Agora</button>
     </form>
 
-    <p id="status"></p>
+    <p id="status" class="status"></p>
   </div>
 
   <script>
     const form = document.getElementById("checkoutForm");
-    const status = document.getElementById("status");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("btnPagar");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      status.textContent = "Processando pagamento...";
+      statusEl.textContent = "🔄 Conectando à Arkama...";
+      statusEl.style.color = "#00b2ff";
+      btn.disabled = true;
 
       const data = {
-        nome: form.nome.value,
-        email: form.email.value,
-        valor: form.valor.value,
-        metodo: form.metodo.value,
+        nome: document.getElementById("nome").value,
+        email: document.getElementById("email").value,
+        valor: document.getElementById("valor").value,
+        forma: document.getElementById("forma").value,
       };
 
       try {
@@ -58,17 +61,21 @@
         const result = await res.json();
 
         if (res.ok) {
-          status.style.color = "green";
-          status.textContent = "✅ Pagamento criado com sucesso!";
-          console.log(result);
+          statusEl.textContent = "✅ Pagamento criado com sucesso!";
+          statusEl.style.color = "#00ff85";
+          console.log("Sucesso Arkama:", result);
         } else {
-          status.style.color = "red";
-          status.textContent = "❌ " + (result.mensagem || "Erro ao criar pagamento.");
-          console.error(result);
+          statusEl.textContent =
+            "⚠️ " + (result.erro || "Erro ao criar pagamento. Tentando servidor alternativo...");
+          statusEl.style.color = "#ffcc00";
+          console.warn("Erro Arkama:", result);
         }
       } catch (err) {
-        status.style.color = "red";
-        status.textContent = "Falha ao criar pagamento. Verifique logs na Vercel.";
+        statusEl.textContent = "❌ Falha ao conectar à Arkama. Verifique a conexão.";
+        statusEl.style.color = "#ff4444";
+        console.error(err);
+      } finally {
+        btn.disabled = false;
       }
     });
   </script>
