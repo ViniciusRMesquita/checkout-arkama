@@ -1,6 +1,6 @@
 body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #0d0d0d;
+  background-color: #0f0f0f;
+  font-family: "Poppins", sans-serif;
   color: #fff;
   display: flex;
   justify-content: center;
@@ -8,46 +8,57 @@ body {
   height: 100vh;
 }
 
-.checkout-container {
-  background: #1a1a1a;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 0 25px rgba(0,0,0,0.3);
-  width: 90%;
-  max-width: 400px;
+.container {
+  background: #1c1c1c;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+  width: 350px;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 20px;
+  color: #00b2ff;
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.8rem;
 }
 
-input, select, button, textarea {
-  border-radius: 8px;
+label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+input,
+select,
+button {
   padding: 10px;
   border: none;
-  font-size: 15px;
+  border-radius: 6px;
+}
+
+input,
+select {
+  background: #2a2a2a;
+  color: #fff;
 }
 
 button {
-  background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
-  color: #fff;
+  background: linear-gradient(90deg, #6200ea, #00b2ff);
+  color: white;
+  font-weight: bold;
   cursor: pointer;
-  font-weight: 600;
   transition: 0.3s;
 }
 
 button:hover {
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
-#resultado {
-  margin-top: 20px;
+#status {
   text-align: center;
+  margin-top: 1rem;
 }
