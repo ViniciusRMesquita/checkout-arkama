@@ -63,5 +63,21 @@ app.post("/api/pagar", async (req, res) => {
     });
   }
 });
+app.get("/api/teste", async (req, res) => {
+  try {
+    const resposta = await fetch(`${ARKAMA_BASE_URL}/`, {
+      headers: {
+        "Authorization": `Bearer ${process.env.ARKAMA_API_KEY}`,
+        "User-Agent": "Checkout-Arkama",
+      },
+    });
+
+    const texto = await resposta.text();
+    res.send(texto);
+  } catch (err) {
+    res.send(err.message);
+  }
+});
 
 app.listen(3000, () => console.log("🚀 Servidor rodando na porta 3000"));
+
