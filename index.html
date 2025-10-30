@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout - Sua Marca</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="checkout-container">
+    <h1>Finalizar Pedido</h1>
+    <form id="checkout-form">
+      <label>Nome completo</label>
+      <input type="text" name="nome" required />
+
+      <label>Email</label>
+      <input type="email" name="email" required />
+
+      <label>Valor (R$)</label>
+      <input type="number" name="valor" step="0.01" required />
+
+      <label>Forma de pagamento</label>
+      <select name="metodo" required>
+        <option value="pix">Pix</option>
+        <option value="cartao">Cartão de Crédito</option>
+      </select>
+
+      <button type="submit">Pagar Agora</button>
+    </form>
+
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    document.getElementById("checkout-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      document.getElementById("resultado").innerHTML = "Processando pagamento...";
+
+      const res = await fetch("/api/pagar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const resposta = await res.json();
+
+      if (resposta.pix_url) {
+        document.getElementById("resultado").innerHTML = `
+          <h3>Escaneie o QR Code abaixo:</h3>
+          <img src="${resposta.pix_qrcode}" alt="QR Code Pix" />
+          <p>Ou copie o código Pix:</p>
+          <textarea readonly>${resposta.pix_copia_cola}</textarea>
+        `;
+      } else if (resposta.status === "erro") {
+        document.getElementById("resultado").innerHTML = `<p style="color:red">${resposta.mensagem}</p>`;
+      } else {
+        document.getElementById("resultado").innerHTML = `<p>Pagamento criado com sucesso!</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
