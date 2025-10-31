@@ -6,7 +6,7 @@
     { "src": "style.css", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/pagar", "dest": "/server.js" },
+    { "src": "^/api/(.*)$", "dest": "/server.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
