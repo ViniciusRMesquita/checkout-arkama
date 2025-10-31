@@ -2,128 +2,185 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Finalizar Pedido</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f9fc;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      width: 400px;
-      text-align: center;
-    }
-    h1 {
-      color: #333;
-      margin-bottom: 20px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 15px;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .mensagem {
-      margin-top: 20px;
-      font-weight: bold;
-      display: none;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    .sucesso {
-      color: #155724;
-      background: #d4edda;
-      border: 1px solid #c3e6cb;
-    }
-    .erro {
-      color: #721c24;
-      background: #f8d7da;
-      border: 1px solid #f5c6cb;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Checkout – Gerar Payload</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Finalizar Pedido</h1>
+  <main class="container">
+    <header>
+      <h1>Finalizar Pedido</h1>
+      <p>Preencha os dados e gere o payload exigido pela API.</p>
+    </header>
 
-    <input type="text" id="nome" placeholder="Nome completo" />
-    <input type="email" id="email" placeholder="E-mail" />
-    <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" />
-    
-    <select id="formaPagamento">
-      <option value="Pix">Pix</option>
-      <option value="Cartão">Cartão</option>
-      <option value="Boleto">Boleto</option>
-    </select>
+    <form id="checkoutForm" class="card">
+      <h2>Cliente</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" placeholder="Ex.: Lucas Mesquita Prado" required>
+        </div>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="Ex.: teste@teste.com" required>
+        </div>
+      </div>
 
-    <button onclick="finalizarPedido()">Pagar Agora</button>
+      <h2>Pagamento</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="valor">Valor (R$)</label>
+          <input type="number" id="valor" step="0.01" min="0" placeholder="Ex.: 39.90">
+        </div>
+        <div class="field">
+          <label for="paymentMethod">Forma de pagamento</label>
+          <select id="paymentMethod" required>
+            <option value="">Selecione…</option>
+            <option value="pix">Pix</option>
+            <option value="boleto">Boleto</option>
+            <option value="credit_card">Cartão de crédito</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint">
+        <strong>OBS:</strong> A API exige <code>value</code> ou <code>total_value</code>. Se você usar itens, o back-end pode preencher <code>total_value</code> somando os itens.
+      </p>
 
-    <div id="mensagem" class="mensagem"></div>
-  </div>
+      <h2>Itens</h2>
+      <div id="itemsWrapper"></div>
+
+      <div class="buttons">
+        <button class="ghost" type="button" id="addItemBtn">+ Adicionar item</button>
+        <button type="button" id="genPayloadBtn">Gerar Payload</button>
+        <button class="primary" type="submit">Enviar para /api/pagar</button>
+      </div>
+    </form>
+
+    <section class="card">
+      <h2>Payload gerado</h2>
+      <pre id="payloadBox" class="code">// Gere o payload para visualizar aqui…</pre>
+      <div id="alert" class="alert" style="display:none;"></div>
+    </section>
+  </main>
 
   <script>
-    async function finalizarPedido() {
-      const nome = document.getElementById("nome").value;
-      const email = document.getElementById("email").value;
-      const valor = document.getElementById("valor").value;
-      const formaPagamento = document.getElementById("formaPagamento").value;
-      const msg = document.getElementById("mensagem");
+    // ========= UI de itens =========
+    const itemsWrapper = document.getElementById('itemsWrapper');
+    const addItemBtn   = document.getElementById('addItemBtn');
 
-      msg.style.display = "none";
+    function addItemRow(data = {name:'Produto', quantity:1, unit_amount:0}) {
+      const row = document.createElement('div');
+      row.className = 'item-row';
 
-      if (!nome || !email || !valor) {
-        msg.textContent = "Preencha todos os campos!";
-        msg.className = "mensagem erro";
-        msg.style.display = "block";
-        return;
+      row.innerHTML = `
+        <div class="field">
+          <label>Nome do item</label>
+          <input type="text" class="it-name" value="${data.name}">
+        </div>
+        <div class="field">
+          <label>Quantidade</label>
+          <input type="number" class="it-qty" value="${data.quantity}" min="1">
+        </div>
+        <div class="field">
+          <label>Valor unitário (R$)</label>
+          <input type="number" class="it-val" step="0.01" min="0" value="${data.unit_amount}">
+        </div>
+        <button type="button" class="danger remove">Remover</button>
+      `;
+
+      row.querySelector('.remove').onclick = () => row.remove();
+      itemsWrapper.appendChild(row);
+    }
+
+    addItemBtn.onclick = () => addItemRow();
+
+    // deixa um item inicial
+    addItemRow({name:'Pedido', quantity:1, unit_amount:0});
+
+    // ========= Geração do payload =========
+    const form          = document.getElementById('checkoutForm');
+    const genPayloadBtn = document.getElementById('genPayloadBtn');
+    const payloadBox    = document.getElementById('payloadBox');
+    const alertBox      = document.getElementById('alert');
+
+    function buildPayload() {
+      const nome  = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const value = document.getElementById('valor').value;     // opcional
+      const method= document.getElementById('paymentMethod').value;
+
+      // constrói lista de itens
+      const itRows = [...document.querySelectorAll('.item-row')];
+      const items  = itRows.map(r => ({
+        name: r.querySelector('.it-name').value.trim() || 'Item',
+        quantity: parseInt(r.querySelector('.it-qty').value || '1', 10),
+        unit_amount: parseFloat(r.querySelector('.it-val').value || '0')
+      })).filter(i => i.quantity > 0);
+
+      const payload = {
+        // se você quiser passar value direto, use:
+        // value: value ? parseFloat(value) : undefined,
+        paymentMethod: method,
+        customer: {
+          name: nome,
+          email: email
+        },
+        items,
+        // ip será preenchido no back-end via req.headers['x-forwarded-for'] etc.
+      };
+
+      // Se o usuário informou um "valor total" manual, mande como value
+      if (value && !isNaN(value)) {
+        payload.value = parseFloat(value);
       }
+      // (Opcional) Se você quiser mandar total_value com base nos itens:
+      // const total = items.reduce((acc, i) => acc + i.quantity * i.unit_amount, 0);
+      // payload.total_value = parseFloat(total.toFixed(2));
+
+      return payload;
+    }
+
+    genPayloadBtn.onclick = () => {
+      const p = buildPayload();
+      payloadBox.textContent = JSON.stringify(p, null, 2);
+      showAlert('Payload gerado. Você pode enviar agora.', 'success');
+    };
+
+    function showAlert(msg, type='info') {
+      alertBox.textContent = msg;
+      alertBox.className = `alert ${type}`;
+      alertBox.style.display = 'block';
+      setTimeout(() => alertBox.style.display = 'none', 4000);
+    }
+
+    // ========= Envio para /api/pagar =========
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const payload = buildPayload();
+      payloadBox.textContent = JSON.stringify(payload, null, 2);
 
       try {
-        const resposta = await fetch("/api/pagar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, email, valor, formaPagamento })
+        const resp = await fetch('/api/pagar', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
         });
+        const data = await resp.json();
 
-        const dados = await resposta.json();
-
-        if (resposta.ok && dados.sucesso) {
-          msg.innerHTML = `✅ Pagamento criado com sucesso!<br> 
-          ID: <b>${dados.dados.id}</b><br>
-          <a href="${dados.dados.link_pagamento}" target="_blank">Abrir link de pagamento</a>`;
-          msg.className = "mensagem sucesso";
+        if (!resp.ok) {
+          showAlert(`Erro: ${JSON.stringify(data)}`, 'danger');
         } else {
-          msg.textContent = "❌ Falha: " + (dados.erro || "Erro ao criar pagamento");
-          msg.className = "mensagem erro";
+          showAlert('Pedido criado com sucesso!', 'success');
+          // Se a API devolver link/qr-code, mostre aqui:
+          if (data?.dados?.link_pagamento) {
+            payloadBox.textContent += `\n\nLink: ${data.dados.link_pagamento}`;
+          }
         }
-
-      } catch (error) {
-        msg.textContent = "❌ Erro de conexão com o servidor.";
-        msg.className = "mensagem erro";
+      } catch (err) {
+        showAlert(`Falha de conexão: ${err.message}`, 'danger');
       }
-
-      msg.style.display = "block";
-    }
+    });
   </script>
 </body>
 </html>
